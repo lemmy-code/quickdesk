@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  guest
+  customer
+  agent
+  admin
+}
+
+enum RoomStatus {
+  waiting
+  active
+  closed
+}
+
+enum MessageType {
+  user
+  system
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String?  @map("password_hash")
+  role         Role     @default(guest)
+  isOnline     Boolean  @default(false) @map("is_online")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  createdRooms  Room[]       @relation("CreatedBy")
+  assignedRooms Room[]       @relation("AssignedTo")
+  messages      Message[]
+  roomMembers   RoomMember[]
+
+  @@map("users")
+}
+
+model Room {
+  id         String     @id @default(uuid()) @db.Uuid
+  title      String
+  status     RoomStatus @default(waiting)
+  createdBy  String     @map("created_by") @db.Uuid
+  assignedTo String?    @map("assigned_to") @db.Uuid
+  createdAt  DateTime   @default(now()) @map("created_at")
+  closedAt   DateTime?  @map("closed_at")
+
+  creator    User         @relation("CreatedBy", fields: [createdBy], references: [id])
+  agent      User?        @relation("AssignedTo", fields: [assignedTo], references: [id])
+  messages   Message[]
+  members    RoomMember[]
+
+  @@index([status])
+  @@index([assignedTo])
+  @@map("rooms")
+}
+
+model Message {
+  id       String      @id @default(uuid()) @db.Uuid
+  roomId   String      @map("room_id") @db.Uuid
+  senderId String?     @map("sender_id") @db.Uuid
+  content  String
+  type     MessageType @default(user)
+  sentAt   DateTime    @default(now()) @map("sent_at")
+
+  room   Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User? @relation(fields: [senderId], references: [id])
+
+  @@index([roomId, sentAt(sort: Desc), id])
+  @@map("messages")
+}
+
+model RoomMember {
+  roomId   String   @map("room_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, userId])
+  @@map("room_members")
+}

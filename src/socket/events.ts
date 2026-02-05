@@ -1,0 +1,16 @@
+export const Events = {
+  ROOM_JOIN: 'room:join',
+  ROOM_LEAVE: 'room:leave',
+  MESSAGE_SEND: 'message:send',
+  TYPING_START: 'typing:start',
+  TYPING_STOP: 'typing:stop',
+  MESSAGE_NEW: 'message:new',
+  ROOM_ASSIGNED: 'room:assigned',
+  ROOM_CLOSED: 'room:closed',
+  USER_JOINED: 'user:joined',
+  USER_LEFT: 'user:left',
+  TYPING_UPDATE: 'typing:update',
+  PRESENCE_UPDATE: 'presence:update',
+  SYSTEM_MESSAGE: 'system:message',
+  ERROR: 'error',
+} as const;
