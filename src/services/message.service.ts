@@ -26,7 +26,7 @@ export async function getMessages(
           }
         : {}),
     },
-    include: { sender: true },
+    include: { sender: { select: { id: true, username: true, role: true } } },
     orderBy: [{ sentAt: direction === 'before' ? 'desc' : 'asc' }, { id: 'desc' }],
     take,
   });
@@ -55,7 +55,7 @@ export async function createMessage(
       content,
       type,
     },
-    include: { sender: true },
+    include: { sender: { select: { id: true, username: true, role: true } } },
   });
 }
 

@@ -3,6 +3,8 @@ import { prisma } from '../lib/db';
 import { NotFoundError, ForbiddenError, ValidationError } from '../lib/errors';
 import { logger } from '../lib/logger';
 
+const userSelect = { id: true, username: true, role: true } as const;
+
 export async function createRoom(userId: string, title: string) {
   const room = await prisma.room.create({
     data: {
@@ -13,9 +15,9 @@ export async function createRoom(userId: string, title: string) {
       },
     },
     include: {
-      creator: true,
-      agent: true,
-      members: { include: { user: true } },
+      creator: { select: userSelect },
+      agent: { select: userSelect },
+      members: { include: { user: { select: userSelect } } },
     },
   });
 
@@ -32,8 +34,8 @@ export async function listRooms(userId: string, role: string) {
     return prisma.room.findMany({
       where: { status: { not: RoomStatus.closed } },
       include: {
-        creator: true,
-        agent: true,
+        creator: { select: userSelect },
+        agent: { select: userSelect },
         _count: { select: { messages: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -44,8 +46,8 @@ export async function listRooms(userId: string, role: string) {
   return prisma.room.findMany({
     where: { createdBy: userId },
     include: {
-      creator: true,
-      agent: true,
+      creator: { select: userSelect },
+      agent: { select: userSelect },
       _count: { select: { messages: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -56,9 +58,9 @@ export async function getRoom(roomId: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      creator: true,
-      agent: true,
-      members: { include: { user: true } },
+      creator: { select: userSelect },
+      agent: { select: userSelect },
+      members: { include: { user: { select: userSelect } } },
     },
   });
 
@@ -95,9 +97,9 @@ export async function assignAgent(roomId: string, agentId: string) {
       },
     },
     include: {
-      creator: true,
-      agent: true,
-      members: { include: { user: true } },
+      creator: { select: userSelect },
+      agent: { select: userSelect },
+      members: { include: { user: { select: userSelect } } },
     },
   });
 
@@ -148,9 +150,9 @@ export async function closeRoom(roomId: string, userId: string, role: string) {
       closedAt: new Date(),
     },
     include: {
-      creator: true,
-      agent: true,
-      members: { include: { user: true } },
+      creator: { select: userSelect },
+      agent: { select: userSelect },
+      members: { include: { user: { select: userSelect } } },
     },
   });
 }

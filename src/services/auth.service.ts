@@ -33,6 +33,7 @@ export async function register(data: { username: string; email: string; password
       passwordHash,
       role: Role.customer,
     },
+    select: { id: true, username: true, email: true, role: true },
   });
 
   const tokens = generateTokens({ userId: user.id, role: user.role });
@@ -40,17 +41,18 @@ export async function register(data: { username: string; email: string; password
 }
 
 export async function login(data: { email: string; password: string }) {
-  const user = await prisma.user.findUnique({ where: { email: data.email } });
+  const fullUser = await prisma.user.findUnique({ where: { email: data.email } });
 
-  if (!user || !user.passwordHash) {
+  if (!fullUser || !fullUser.passwordHash) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  const valid = await bcrypt.compare(data.password, user.passwordHash);
+  const valid = await bcrypt.compare(data.password, fullUser.passwordHash);
   if (!valid) {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  const user = { id: fullUser.id, username: fullUser.username, email: fullUser.email, role: fullUser.role };
   const tokens = generateTokens({ userId: user.id, role: user.role });
   return { user, ...tokens };
 }
@@ -63,6 +65,7 @@ export async function createGuest() {
       username: `guest_${uniqueId}`,
       role: Role.guest,
     },
+    select: { id: true, username: true, role: true },
   });
 
   const tokens = generateTokens({ userId: user.id, role: user.role });

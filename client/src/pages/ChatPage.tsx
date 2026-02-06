@@ -12,9 +12,9 @@ interface TypingUpdatePayload {
 }
 
 interface SystemMessagePayload {
-  body: string;
+  content: string;
   roomId: string;
-  createdAt: string;
+  sentAt: string;
 }
 
 interface SocketErrorPayload {
@@ -67,9 +67,10 @@ export function ChatPage() {
       const systemMsg: Message = {
         id: `sys-${Date.now()}-${Math.random()}`,
         roomId: data.roomId,
-        sender: { id: 'system', username: 'System' },
-        body: data.body,
-        createdAt: data.createdAt,
+        sender: null,
+        content: data.content,
+        type: 'system',
+        sentAt: data.sentAt,
       };
       addMessage(systemMsg);
     };
@@ -114,7 +115,7 @@ export function ChatPage() {
     if (!body.trim() || !roomId) return;
 
     const socket = connectSocket();
-    socket.emit('message:send', { roomId, body: body.trim() });
+    socket.emit('message:send', { roomId, content: body.trim() });
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -125,8 +126,8 @@ export function ChatPage() {
     setBody('');
   };
 
-  const isSystemMessage = (msg: Message) => msg.sender.id === 'system';
-  const isOwnMessage = (msg: Message) => msg.sender.id === user?.id;
+  const isSystemMessage = (msg: Message) => msg.type === 'system' || !msg.sender;
+  const isOwnMessage = (msg: Message) => msg.sender?.id === user?.id;
 
   const filteredTyping = typingUsers.filter((u) => u.id !== user?.id);
 
@@ -152,7 +153,7 @@ export function ChatPage() {
             if (isSystemMessage(msg)) {
               return (
                 <div key={msg.id} className="text-center">
-                  <span className="text-xs text-gray-400">{msg.body}</span>
+                  <span className="text-xs text-gray-400">{msg.content}</span>
                 </div>
               );
             }
@@ -161,9 +162,9 @@ export function ChatPage() {
               return (
                 <div key={msg.id} className="flex justify-end">
                   <div className="max-w-xs rounded-lg bg-blue-600 px-4 py-2 text-white lg:max-w-md">
-                    <p className="text-sm">{msg.body}</p>
+                    <p className="text-sm">{msg.content}</p>
                     <p className="mt-1 text-right text-xs text-blue-200">
-                      {new Date(msg.createdAt).toLocaleTimeString()}
+                      {new Date(msg.sentAt).toLocaleTimeString()}
                     </p>
                   </div>
                 </div>
@@ -174,11 +175,11 @@ export function ChatPage() {
               <div key={msg.id} className="flex justify-start">
                 <div className="max-w-xs rounded-lg border border-gray-200 bg-white px-4 py-2 lg:max-w-md">
                   <p className="text-xs font-medium text-gray-500">
-                    {msg.sender.username}
+                    {msg.sender?.username}
                   </p>
-                  <p className="text-sm text-gray-900">{msg.body}</p>
+                  <p className="text-sm text-gray-900">{msg.content}</p>
                   <p className="mt-1 text-xs text-gray-400">
-                    {new Date(msg.createdAt).toLocaleTimeString()}
+                    {new Date(msg.sentAt).toLocaleTimeString()}
                   </p>
                 </div>
               </div>

@@ -15,9 +15,10 @@ export interface Message {
   sender: {
     id: string;
     username: string;
-  };
-  body: string;
-  createdAt: string;
+  } | null;
+  content: string;
+  type?: string;
+  sentAt: string;
 }
 
 interface TypingUser {
@@ -79,7 +80,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     );
     const existing = cursor ? get().messages : [];
     set({
-      messages: [...data.messages.reverse(), ...existing],
+      messages: [...data.messages, ...existing],
       nextCursor: data.nextCursor,
       hasMore: data.nextCursor !== null,
     });
