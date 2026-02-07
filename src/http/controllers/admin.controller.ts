@@ -31,6 +31,7 @@ export async function changeRole(req: Request, res: Response, next: NextFunction
     const updated = await prisma.user.update({
       where: { id: req.params.id as string },
       data: { role: req.body.role },
+      select: { id: true, username: true, email: true, role: true },
     });
     res.status(200).json(updated);
   } catch (err) {

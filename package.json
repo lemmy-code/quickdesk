@@ -14,7 +14,11 @@
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",
     "test": "jest --forceExit --detectOpenHandles",
-    "lint": "eslint src/ --ext .ts"
+    "lint": "eslint src/ --ext .ts",
+    "db:seed": "npx ts-node prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
