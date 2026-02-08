@@ -21,10 +21,13 @@ export async function createRoom(userId: string, title: string) {
     },
   });
 
-  // Try auto-assign in background — don't block room creation
-  tryAutoAssign(room.id).catch((err) => {
+  // Try auto-assign — if it works, return updated room
+  try {
+    const assigned = await tryAutoAssign(room.id);
+    if (assigned) return assigned;
+  } catch (err) {
     logger.error(err, 'Auto-assign failed for room %s', room.id);
-  });
+  }
 
   return room;
 }

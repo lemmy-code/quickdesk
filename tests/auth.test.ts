@@ -4,9 +4,17 @@ import { prisma } from '../src/lib/db';
 
 beforeAll(async () => {
   await prisma.$connect();
+  // Clean test data from previous runs
+  await prisma.roomMember.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.room.deleteMany();
+  await prisma.user.deleteMany();
 });
 
 afterAll(async () => {
+  await prisma.roomMember.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.room.deleteMany();
   await prisma.user.deleteMany();
   await prisma.$disconnect();
 });

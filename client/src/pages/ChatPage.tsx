@@ -7,7 +7,9 @@ import { connectSocket, disconnectSocket } from '../lib/socket';
 import type { Message } from '../stores/chatStore';
 
 interface TypingUpdatePayload {
-  user: { id: string; username: string };
+  userId: string;
+  username: string;
+  roomId: string;
   isTyping: boolean;
 }
 
@@ -60,7 +62,7 @@ export function ChatPage() {
     };
 
     const handleTypingUpdate = (data: TypingUpdatePayload) => {
-      setTypingUser(data.user, data.isTyping);
+      setTypingUser({ id: data.userId, username: data.username }, data.isTyping);
     };
 
     const handleSystemMessage = (data: SystemMessagePayload) => {
@@ -99,14 +101,14 @@ export function ChatPage() {
     setBody(e.target.value);
 
     const socket = connectSocket();
-    socket.emit('typing:start', roomId);
+    socket.emit('typing:start', { roomId });
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('typing:stop', roomId);
+      socket.emit('typing:stop', { roomId });
     }, 2000);
   };
 
@@ -121,7 +123,7 @@ export function ChatPage() {
       clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = null;
     }
-    socket.emit('typing:stop', roomId);
+    socket.emit('typing:stop', { roomId });
 
     setBody('');
   };
