@@ -4,9 +4,14 @@ import api from '../lib/api';
 export interface Room {
   id: string;
   title: string;
+  status: 'waiting' | 'active' | 'closed';
   createdBy: string;
   createdAt: string;
-  updatedAt: string;
+  assignedTo: string | null;
+  closedAt: string | null;
+  creator?: { id: string; username: string; role: string };
+  agent?: { id: string; username: string; role: string } | null;
+  _count?: { messages: number };
 }
 
 export interface Message {
