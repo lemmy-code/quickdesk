@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
+
+function getErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response?.data?.error?.message) {
+    return err.response.data.error.message;
+  }
+  return 'Login failed. Please try again.';
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,8 +24,8 @@ export function LoginPage() {
     try {
       await login(email, password);
       navigate('/');
-    } catch {
-      toast.error('Login failed. Check your credentials.');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -77,11 +85,17 @@ export function LoginPage() {
           </button>
         </form>
 
+        <div className="my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+
         <button
           type="button"
           onClick={handleGuest}
           disabled={isLoading}
-          className="mt-3 w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           Continue as Guest
         </button>
