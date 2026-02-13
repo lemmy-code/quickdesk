@@ -185,7 +185,7 @@ export function ChatPage() {
               &larr; Back
             </button>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">
+              <h1 className="truncate text-lg font-bold text-gray-900">
                 {room?.title || 'Chat'}
               </h1>
               {room && (
@@ -247,7 +247,7 @@ export function ChatPage() {
               if (isOwnMessage(msg)) {
                 return (
                   <div key={msg.id} className="flex justify-end">
-                    <div className="max-w-xs rounded-lg bg-blue-600 px-4 py-2 text-white lg:max-w-md">
+                    <div className="max-w-[75%] rounded-lg bg-blue-600 px-4 py-2 text-white">
                       <p className="text-sm">{msg.content}</p>
                       <p className="mt-1 text-right text-xs text-blue-200">
                         {new Date(msg.sentAt).toLocaleTimeString()}
@@ -259,7 +259,7 @@ export function ChatPage() {
 
               return (
                 <div key={msg.id} className="flex justify-start">
-                  <div className="max-w-xs rounded-lg border border-gray-200 bg-white px-4 py-2 lg:max-w-md">
+                  <div className="max-w-[75%] rounded-lg border border-gray-200 bg-white px-4 py-2">
                     <p className="text-xs font-medium text-gray-500">
                       {msg.sender?.username}
                     </p>
