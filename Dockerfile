@@ -1,13 +1,21 @@
-FROM node:20-alpine
+FROM node:20-alpine AS base
 
 WORKDIR /app
 
+# Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --omit=dev
 
-COPY . .
+# Copy source and generate Prisma client
+COPY prisma ./prisma
 RUN npx prisma generate
 
-EXPOSE 3000
+COPY src ./src
+COPY tsconfig.json ./
 
-CMD ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/index.ts"]
+# Build TypeScript
+RUN npx tsc
+
+EXPOSE 3001
+
+CMD ["node", "dist/index.js"]
