@@ -35,8 +35,20 @@ function storeAuth(data: AuthTokens & { user: User }): void {
   localStorage.setItem('user', JSON.stringify(data.user));
 }
 
+function loadUser(): User | null {
+  const raw = localStorage.getItem('user');
+  if (raw) {
+    try {
+      return JSON.parse(raw) as User;
+    } catch {
+      localStorage.clear();
+    }
+  }
+  return null;
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
+  user: loadUser(),
   isLoading: false,
 
   login: async (email: string, password: string) => {
