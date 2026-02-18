@@ -13,6 +13,13 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
         return;
       }
 
+      if (socket.user.role !== 'agent' && socket.user.role !== 'admin') {
+        if (room.createdBy !== socket.user.userId) {
+          socket.emit(Events.ERROR, { message: 'Access denied' });
+          return;
+        }
+      }
+
       // Upsert room member
       await prisma.roomMember.upsert({
         where: {
