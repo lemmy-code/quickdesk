@@ -22,7 +22,7 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 
 export async function getOne(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const room = await roomService.getRoom(req.params.id as string);
+    const room = await roomService.getRoom(req.params.id as string, req.user!.userId, req.user!.role);
     res.status(200).json(room);
   } catch (err) {
     next(err);
@@ -49,6 +49,8 @@ export async function close(req: Request, res: Response, next: NextFunction): Pr
 
 export async function getMessages(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    // Verify room access before returning messages
+    await roomService.getRoom(req.params.id as string, req.user!.userId, req.user!.role);
     const { cursor, limit, direction } = req.query;
     const result = await messageService.getMessages(req.params.id as string, {
       cursor: cursor as string | undefined,

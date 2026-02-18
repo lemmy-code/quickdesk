@@ -57,7 +57,7 @@ export async function listRooms(userId: string, role: string) {
   });
 }
 
-export async function getRoom(roomId: string) {
+export async function getRoom(roomId: string, userId: string, role: string) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
@@ -69,6 +69,10 @@ export async function getRoom(roomId: string) {
 
   if (!room) {
     throw new NotFoundError('Room');
+  }
+
+  if (role !== Role.agent && role !== Role.admin && room.createdBy !== userId) {
+    throw new ForbiddenError('Access denied');
   }
 
   return room;
