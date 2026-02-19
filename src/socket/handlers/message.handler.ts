@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import { Events } from '../events';
 import { createMessage } from '../../services/message.service';
+import { prisma } from '../../lib/db';
 import { logger } from '../../lib/logger';
 
 interface MessagePayload {
@@ -12,6 +13,17 @@ export function registerMessageHandlers(io: Server, socket: Socket): void {
   socket.on(Events.MESSAGE_SEND, async (data: MessagePayload) => {
     try {
       const { roomId, content } = data;
+
+      if (!socket.rooms.has(roomId)) {
+        socket.emit(Events.ERROR, { message: 'You must join the room first' });
+        return;
+      }
+
+      const room = await prisma.room.findUnique({ where: { id: roomId } });
+      if (!room || room.status === 'closed') {
+        socket.emit(Events.ERROR, { message: 'Room not available' });
+        return;
+      }
 
       if (!content || !content.trim()) {
         socket.emit(Events.ERROR, { message: 'Message content cannot be empty' });
