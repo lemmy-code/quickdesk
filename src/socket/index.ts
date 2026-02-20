@@ -2,6 +2,7 @@ import type { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { pubClient, subClient } from '../lib/redis';
+import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { socketAuth } from './auth';
 import { registerRoomHandlers } from './handlers/room.handler';
@@ -12,7 +13,7 @@ import { registerPresenceHandlers } from './handlers/presence.handler';
 export function setupSocketIO(httpServer: HttpServer): Server {
   const io = new Server(httpServer, {
     cors: {
-      origin: '*',
+      origin: env.CORS_ORIGIN,
       methods: ['GET', 'POST'],
     },
   });

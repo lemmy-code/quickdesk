@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import { env } from '../config/env';
 import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth.routes';
 import roomsRoutes from './routes/rooms.routes';
@@ -9,7 +10,7 @@ import adminRoutes from './routes/admin.routes';
 export const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({ origin: env.CORS_ORIGIN }));
 app.use(express.json());
 
 // Health check
