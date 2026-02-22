@@ -15,3 +15,18 @@ export function validate(schema: ZodType) {
     }
   };
 }
+
+export function validateParams(schema: ZodType) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      schema.parse(req.params);
+      next();
+    } catch (err) {
+      if (err instanceof ZodError) {
+        next({ statusCode: 400, message: err.issues[0].message, code: 'VALIDATION_ERROR' });
+      } else {
+        next(err);
+      }
+    }
+  };
+}
