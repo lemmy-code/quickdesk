@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
 import { prisma } from '../lib/db';
-import { signAccessToken, signRefreshToken, verifyToken, TokenPayload } from '../lib/jwt';
+import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from '../lib/jwt';
 import { ConflictError, UnauthorizedError } from '../lib/errors';
 
 function generateTokens(payload: TokenPayload) {
@@ -75,7 +75,7 @@ export async function createGuest() {
 export async function refreshAccessToken(token: string) {
   let payload: TokenPayload;
   try {
-    payload = verifyToken(token);
+    payload = verifyRefreshToken(token);
   } catch {
     throw new UnauthorizedError('Invalid or expired refresh token');
   }
