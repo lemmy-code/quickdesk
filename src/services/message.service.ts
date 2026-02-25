@@ -1,5 +1,6 @@
 import { MessageType } from '@prisma/client';
 import { prisma } from '../lib/db';
+import { ValidationError } from '../lib/errors';
 
 interface PaginationOptions {
   cursor?: string;
@@ -14,17 +15,23 @@ export async function getMessages(
   const { cursor, limit = 50, direction = 'before' } = options;
   const take = limit + 1;
 
+  let cursorFilter = {};
+  if (cursor) {
+    const cursorMessage = await prisma.message.findUnique({ where: { id: cursor } });
+    if (!cursorMessage) {
+      throw new ValidationError('Invalid cursor');
+    }
+    cursorFilter = {
+      sentAt: direction === 'before'
+        ? { lt: cursorMessage.sentAt }
+        : { gt: cursorMessage.sentAt },
+    };
+  }
+
   const messages = await prisma.message.findMany({
     where: {
       roomId,
-      ...(cursor
-        ? {
-            sentAt:
-              direction === 'before'
-                ? { lt: (await prisma.message.findUnique({ where: { id: cursor } }))!.sentAt }
-                : { gt: (await prisma.message.findUnique({ where: { id: cursor } }))!.sentAt },
-          }
-        : {}),
+      ...cursorFilter,
     },
     include: { sender: { select: { id: true, username: true, role: true } } },
     orderBy: [{ sentAt: direction === 'before' ? 'desc' : 'asc' }, { id: 'desc' }],
