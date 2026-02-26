@@ -29,6 +29,11 @@ jobs:
         image: redis:7-alpine
         ports:
           - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -39,11 +44,19 @@ jobs:
 
       - run: npm ci
       - run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
       - run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/quickdesk_test
 
-      - run: npm test
+      - name: Test
+        run: npm test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/quickdesk_test
           REDIS_URL: redis://localhost:6379
@@ -51,4 +64,8 @@ jobs:
           JWT_REFRESH_SECRET: ci-test-refresh-secret-32-chars!
           NODE_ENV: test
 
-      - run: npm run build
+      - name: Build backend
+        run: npm run build
+
+      - name: Build frontend
+        run: cd client && npm ci && npm run build
