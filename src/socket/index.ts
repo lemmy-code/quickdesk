@@ -16,6 +16,7 @@ export function setupSocketIO(httpServer: HttpServer): Server {
       origin: env.CORS_ORIGIN,
       methods: ['GET', 'POST'],
     },
+    maxHttpBufferSize: 64 * 1024, // 64KB max payload
   });
 
   io.adapter(createAdapter(pubClient, subClient));

@@ -30,6 +30,11 @@ export function registerMessageHandlers(io: Server, socket: Socket): void {
         return;
       }
 
+      if (content.length > 4000) {
+        socket.emit(Events.ERROR, { message: 'Message too long (max 4000 characters)' });
+        return;
+      }
+
       const message = await createMessage(roomId, socket.user.userId, content.trim());
 
       io.to(roomId).emit(Events.MESSAGE_NEW, message);
