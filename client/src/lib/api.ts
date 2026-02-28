@@ -1,4 +1,8 @@
-import axios from 'axios';
+import axios, { type InternalAxiosRequestConfig } from 'axios';
+
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 const api = axios.create({ baseURL: '/api' });
 
@@ -18,16 +22,20 @@ api.interceptors.response.use(
       err.response?.status === 401 &&
       err.config
     ) {
+      const config = err.config as RetryableConfig;
+      if (config._retry) return Promise.reject(err);
+
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
+        config._retry = true;
         try {
           const { data } = await axios.post<{ accessToken: string }>(
             '/api/auth/refresh',
             { refreshToken },
           );
           localStorage.setItem('accessToken', data.accessToken);
-          err.config.headers.Authorization = `Bearer ${data.accessToken}`;
-          return axios(err.config);
+          config.headers.Authorization = `Bearer ${data.accessToken}`;
+          return api(config);
         } catch {
           localStorage.clear();
           window.location.href = '/login';
