@@ -18,16 +18,28 @@ async function start() {
 async function shutdown(signal: string) {
   logger.info(`${signal} received, shutting down gracefully`);
 
-  server.close(() => {
+  // Hard kill after 10 seconds if graceful shutdown stalls
+  const forceExit = setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  try {
+    // 1. Stop accepting new connections
+    io.close();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
     logger.info('HTTP server closed');
-  });
 
-  io.close();
-  await prisma.$disconnect();
-  pubClient.disconnect();
-  subClient.disconnect();
+    // 2. Disconnect data stores
+    await prisma.$disconnect();
+    pubClient.disconnect();
+    subClient.disconnect();
+    logger.info('All connections closed');
+  } catch (err) {
+    logger.error(err, 'Error during shutdown');
+  }
 
-  logger.info('All connections closed');
   process.exit(0);
 }
 
