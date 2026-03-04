@@ -1,15 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
-
-function getErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err) && err.response?.data?.error?.message) {
-    return err.response.data.error.message;
-  }
-  return 'Registration failed. Please try again.';
-}
+import { getErrorMessage } from '../lib/errors';
 
 export function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -29,7 +22,7 @@ export function RegisterPage() {
       await register(username, email, password);
       navigate('/');
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(getErrorMessage(err, 'Registration failed. Please try again.'));
     }
   };
 

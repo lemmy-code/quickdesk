@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import api from '../lib/api';
 
+type Role = 'guest' | 'customer' | 'agent' | 'admin';
+
 interface User {
   id: string;
   username: string;
   email?: string;
-  role: string;
+  role: Role;
 }
 
 interface AuthTokens {
@@ -26,7 +28,6 @@ interface AuthState {
   register: (username: string, email: string, password: string) => Promise<void>;
   guestLogin: () => Promise<void>;
   logout: () => void;
-  loadFromStorage: () => void;
 }
 
 function storeAuth(data: AuthTokens & { user: User }): void {
@@ -99,15 +100,4 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user: null });
   },
 
-  loadFromStorage: () => {
-    const raw = localStorage.getItem('user');
-    if (raw) {
-      try {
-        const user = JSON.parse(raw) as User;
-        set({ user });
-      } catch {
-        localStorage.clear();
-      }
-    }
-  },
 }));

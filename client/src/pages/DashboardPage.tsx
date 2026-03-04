@@ -45,10 +45,11 @@ export function DashboardPage() {
   };
 
   const handleAssign = async (roomId: string) => {
+    if (!user) return;
     try {
-      await api.patch(`/rooms/${roomId}/assign`, { agentId: user!.id });
+      await api.patch(`/rooms/${roomId}/assign`, { agentId: user.id });
       toast.success('Room assigned to you');
-      fetchRooms();
+      await fetchRooms();
     } catch {
       toast.error('Failed to assign room');
     }
@@ -58,7 +59,7 @@ export function DashboardPage() {
     try {
       await api.patch(`/rooms/${roomId}/close`);
       toast.success('Room closed');
-      fetchRooms();
+      await fetchRooms();
     } catch {
       toast.error('Failed to close room');
     }
@@ -97,6 +98,7 @@ export function DashboardPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Describe your issue..."
+              aria-label="Issue title"
               className="flex-1 rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <button

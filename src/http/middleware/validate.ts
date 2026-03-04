@@ -19,7 +19,7 @@ export function validate(schema: ZodType) {
 export function validateParams(schema: ZodType) {
   return (req: Request, _res: Response, next: NextFunction) => {
     try {
-      schema.parse(req.params);
+      req.params = schema.parse(req.params) as typeof req.params;
       next();
     } catch (err) {
       if (err instanceof ZodError) {

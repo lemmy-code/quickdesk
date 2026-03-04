@@ -1,15 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
-
-function getErrorMessage(err: unknown): string {
-  if (axios.isAxiosError(err) && err.response?.data?.error?.message) {
-    return err.response.data.error.message;
-  }
-  return 'Login failed. Please try again.';
-}
+import { getErrorMessage } from '../lib/errors';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +18,7 @@ export function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      toast.error(getErrorMessage(err, 'Login failed. Please try again.'));
     }
   };
 

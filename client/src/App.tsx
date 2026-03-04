@@ -1,7 +1,5 @@
-import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { useAuthStore } from './stores/authStore';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -9,12 +7,6 @@ import { ChatPage } from './pages/ChatPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
-  const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
-
-  useEffect(() => {
-    loadFromStorage();
-  }, [loadFromStorage]);
-
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
