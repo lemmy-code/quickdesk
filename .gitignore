@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .env
+.env.local
+.env.*.local
 *.log
+coverage/
+.DS_Store
 client/node_modules/
 client/dist/
