@@ -1,7 +1,6 @@
 # QuickDesk
 
-> Real-time customer support chat system.
-> Agents handle multiple simultaneous conversations with customers via Socket.IO. Messages persist in PostgreSQL, Redis powers pub/sub for horizontal scaling. Includes a React frontend for the full experience.
+Real-time customer support chat system. Agents handle multiple simultaneous conversations with customers via Socket.IO. Messages persist in PostgreSQL, Redis powers pub/sub for horizontal scaling.
 
 ---
 
@@ -18,92 +17,27 @@
 | Cache / Pub-Sub | Redis (ioredis) |
 | Auth | JWT (access + refresh tokens), bcrypt |
 | Validation | Zod |
-| Logging | pino + pino-pretty (dev) |
-| Security | helmet, cors, rate-limiter-flexible |
-| Frontend | React 18, Vite, Tailwind CSS, Zustand, react-hot-toast |
+| Logging | pino |
+| Frontend | React 18, Vite, Tailwind CSS, Zustand |
 | Testing | Jest + Supertest |
 | Containerization | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
+| CI | GitHub Actions |
 | Linting | ESLint + Prettier |
-
----
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────┐
-│               React Frontend (Vite)                   │
-│          Tailwind CSS + Zustand + Socket.IO           │
-│                                                       │
-│  /login  /register  /dashboard  /chat/:roomId         │
-└────────────────────┬─────────────────────────────────┘
-                     │ REST + Socket.IO
-                     ▼
-┌──────────────────────────────────────────────────────┐
-│              API + Socket.IO Server                   │
-│              (Express + Socket.IO)                    │
-│                                                       │
-│  POST /api/auth/register     → register customer      │
-│  POST /api/auth/login        → get JWT                │
-│  POST /api/auth/refresh      → refresh access token   │
-│  POST /api/auth/guest        → anonymous guest session │
-│  POST /api/rooms             → create support room    │
-│  GET  /api/rooms             → list rooms             │
-│  GET  /api/rooms/:id         → room details           │
-│  PATCH /api/rooms/:id/assign → assign agent           │
-│  PATCH /api/rooms/:id/close  → close room             │
-│  GET  /api/rooms/:id/messages → cursor-paginated history │
-│  GET  /api/admin/users       → list users (admin)     │
-│  PATCH /api/admin/users/:id/role → change role (admin) │
-│                                                       │
-│  Socket.IO (namespaced events)                        │
-│    → room:join     { roomId }                         │
-│    → room:leave    { roomId }                         │
-│    → message:send  { roomId, content }                │
-│    → typing:start  { roomId }                         │
-│    → typing:stop   { roomId }                         │
-└────────────────────┬─────────────────────────────────┘
-                     │ publish / subscribe
-                     ▼
-┌──────────────────────────────────────────────────────┐
-│                     Redis                             │
-│                                                       │
-│  Socket.IO Redis adapter  → cross-instance messaging  │
-│  key: room:{roomId}:typing → typing status            │
-└────────────────────┬─────────────────────────────────┘
-                     │ persist
-                     ▼
-┌──────────────────────────────────────────────────────┐
-│                   PostgreSQL                          │
-│                                                       │
-│  users · rooms · messages · room_members              │
-└──────────────────────────────────────────────────────┘
-```
-
-### Why Redis Pub/Sub?
-
-If two agents connect to **different server instances**, they need to receive each other's messages. The Socket.IO Redis adapter uses Redis pub/sub as the message bus between instances — this is the pattern used in production-grade chat systems.
-
-```
-Agent A (instance 1) ──publish──▶ Redis ──subscribe──▶ Agent B (instance 2)
-```
 
 ---
 
 ## User Roles
 
-| Role | Description | Permissions |
-|---|---|---|
-| guest | Anonymous visitor, auto-created on first visit | Create room, send messages in own room only |
-| customer | Registered user (email-verified guest) | Create rooms, view own history, send messages in own rooms |
-| agent | Support staff | View all open rooms, get assigned, send messages, close rooms |
-| admin | System administrator | Everything agent can + manage users, change roles |
+| Role | Permissions |
+|---|---|
+| guest | Create room, send messages in own room |
+| customer | Create rooms, view own history, send messages in own rooms |
+| agent | View all open rooms, get assigned, send messages, close rooms |
+| admin | Everything agent can do + manage users, change roles |
 
 ---
 
 ## Room Lifecycle
-
-Rooms follow a three-stage lifecycle: **waiting → active → closed**.
 
 ```
 Guest/Customer opens chat
@@ -112,7 +46,7 @@ Guest/Customer opens chat
   Room created (status: waiting)
         │
         ▼
-  Auto-assign to available agent  ──▶  No agent? stays in queue
+  Auto-assign to available agent  ──▶  No agent online? stays in queue
         │
         ▼
   Room status: active (agent assigned)
@@ -122,16 +56,9 @@ Guest/Customer opens chat
         │
         ▼
   Agent or admin closes room (status: closed)
-        │
-        ▼
-  closed_at timestamp set, room archived
 ```
 
-### Assignment
-
-- **Auto-assign**: round-robin among online agents with fewest active rooms
-- **Manual assign**: admin/agent can reassign rooms via API
-- **Transfer**: agent can transfer room to another agent
+Auto-assignment uses round-robin among online agents, prioritizing those with fewest active rooms.
 
 ---
 
@@ -140,16 +67,9 @@ Guest/Customer opens chat
 ### Client → Server
 
 ```typescript
-// Join a support room
 room:join      { roomId: string }
-
-// Leave a room
 room:leave     { roomId: string }
-
-// Send a message
 message:send   { roomId: string, content: string }
-
-// Typing indicators
 typing:start   { roomId: string }
 typing:stop    { roomId: string }
 ```
@@ -157,31 +77,14 @@ typing:stop    { roomId: string }
 ### Server → Client
 
 ```typescript
-// New message in room
 message:new        { roomId, messageId, senderId, senderName, content, sentAt }
-
-// Agent assigned to room
 room:assigned      { roomId, agentId, agentName }
-
-// Room closed
 room:closed        { roomId, closedBy }
-
-// User joined room
 user:joined        { roomId, userId, username }
-
-// User left room
 user:left          { roomId, userId }
-
-// Typing indicator update
 typing:update      { roomId, userId, username, isTyping }
-
-// Online presence in room
 presence:update    { roomId, onlineUsers: [{ id, username, role }] }
-
-// System message (e.g. "Agent X joined", "Room closed")
 system:message     { roomId, content, sentAt }
-
-// Error
 error              { code: string, message: string }
 ```
 
@@ -223,132 +126,6 @@ joined_at     TIMESTAMP DEFAULT NOW()
 PRIMARY KEY (room_id, user_id)
 ```
 
-### Indexes
-
-- `messages(room_id, sent_at DESC, id)` — cursor-based pagination
-- `rooms(status)` — filtering open rooms
-- `rooms(assigned_to)` — agent workload queries
-- `users(email)` — login lookup
-
----
-
-## Project Structure
-
-```
-quickdesk/
-├── docker-compose.yml
-├── .env.example
-├── package.json
-├── tsconfig.json
-├── Dockerfile
-├── jest.config.js
-│
-├── src/
-│   ├── index.ts                    # Entry point + graceful shutdown
-│   │
-│   ├── config/
-│   │   └── env.ts                  # Zod-validated env vars
-│   │
-│   ├── lib/
-│   │   ├── db.ts                   # Prisma client singleton
-│   │   ├── redis.ts                # ioredis pub + sub clients
-│   │   ├── jwt.ts                  # Token sign/verify helpers
-│   │   ├── logger.ts               # pino logger
-│   │   └── errors.ts               # Custom error classes
-│   │
-│   ├── http/
-│   │   ├── app.ts                  # Express app setup (helmet, cors, routes)
-│   │   ├── middleware/
-│   │   │   ├── auth.ts             # JWT verify middleware
-│   │   │   ├── rbac.ts             # Role-based access control
-│   │   │   ├── validate.ts         # Zod validation middleware
-│   │   │   └── errorHandler.ts     # Global error handler
-│   │   ├── routes/
-│   │   │   ├── auth.routes.ts
-│   │   │   ├── rooms.routes.ts
-│   │   │   └── admin.routes.ts
-│   │   └── controllers/
-│   │       ├── auth.controller.ts
-│   │       ├── rooms.controller.ts
-│   │       └── admin.controller.ts
-│   │
-│   ├── socket/
-│   │   ├── index.ts                # Socket.IO server setup + Redis adapter
-│   │   ├── auth.ts                 # Socket auth middleware
-│   │   ├── events.ts               # Event name constants
-│   │   └── handlers/
-│   │       ├── room.handler.ts     # join/leave
-│   │       ├── message.handler.ts  # send message
-│   │       ├── typing.handler.ts   # typing indicators
-│   │       └── presence.handler.ts # online tracking
-│   │
-│   └── services/
-│       ├── auth.service.ts         # Business logic for auth
-│       ├── room.service.ts         # Room CRUD + assignment logic
-│       └── message.service.ts      # Message persistence + retrieval
-│
-├── prisma/
-│   └── schema.prisma
-│
-├── client/                         # React frontend (Vite)
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── index.html
-│   └── src/
-│       ├── main.tsx
-│       ├── App.tsx
-│       ├── index.css               # Tailwind directives
-│       ├── stores/
-│       │   ├── authStore.ts        # Zustand auth state
-│       │   └── chatStore.ts        # Zustand chat state
-│       ├── lib/
-│       │   ├── api.ts              # Axios API client
-│       │   └── socket.ts           # Socket.IO client helper
-│       ├── components/
-│       │   └── ProtectedRoute.tsx
-│       └── pages/
-│           ├── LoginPage.tsx
-│           ├── RegisterPage.tsx
-│           ├── DashboardPage.tsx
-│           └── ChatPage.tsx
-│
-├── tests/
-│   ├── auth.test.ts
-│   ├── rooms.test.ts
-│   ├── admin.test.ts
-│   ├── messages.test.ts
-│   └── socket-test.ts
-│
-└── .github/
-    └── workflows/                  # GitHub Actions CI
-```
-
----
-
-## Key Design Decisions
-
-**Single service monolith** — QuickDesk is intentionally a monolith. One service, one Dockerfile. This shows you know when microservices are overkill.
-
-**Socket.IO over raw ws** — Built-in reconnection, rooms, the Redis adapter for multi-instance scaling, and automatic fallback to HTTP long-polling. Less boilerplate, more reliability.
-
-**4 roles (guest/customer/agent/admin)** — Guests get instant support without a registration barrier. Customers register for history. RBAC middleware enforces permissions per route.
-
-**Auto-assign (round-robin)** — Agents with fewest active rooms get the next customer. No manual queue management needed.
-
-**Cursor-based pagination** — Efficient for chat history. No offset drift when new messages arrive. Uses `sent_at` + `id` as a composite cursor.
-
-**Two Redis clients** — Redis pub/sub requires separate connections for publishing and subscribing. `pubClient` publishes, `subClient` subscribes. This is a common interview topic.
-
-**JWT over sessions** — Stateless auth scales horizontally without a shared session store.
-
-**System messages in DB** — "Agent joined", "Room closed" are persisted as `type='system'` messages for complete conversation history.
-
-**pino for logging** — Structured JSON logs in production, pretty-printed in development. Fastest Node.js logger.
-
-**Graceful shutdown** — Drains Socket.IO connections on SIGTERM, closes Prisma and Redis clients cleanly.
-
-**Zod validation** — Every HTTP request body and environment variable is validated at runtime with Zod schemas.
-
 ---
 
 ## Quick Start
@@ -356,20 +133,17 @@ quickdesk/
 ```bash
 git clone https://github.com/lemmy-code/quickdesk
 cd quickdesk
-
 cp .env.example .env
 
 # Start PostgreSQL + Redis
 docker compose up -d
 
-# Install backend dependencies and run migrations
+# Install and run backend
 npm install
 npx prisma migrate dev --name init
-
-# Start the backend server
 npm run dev
 
-# In a new terminal — install and start the frontend
+# In a new terminal — frontend
 cd client
 npm install
 npm run dev
@@ -378,96 +152,39 @@ npm run dev
 # Frontend:    http://localhost:5173
 ```
 
-### Seed Demo Data (optional)
+### Seed Demo Data
 
 ```bash
 npm run db:seed
 ```
 
-This creates sample users, rooms, and conversations so you can explore the app immediately.
+Creates sample users, rooms, and conversations.
 
-### Demo Credentials
+**Demo credentials** (password: `password123`):
 
-All passwords: `password123`
+| Email | Role |
+|---|---|
+| admin@quickdesk.io | admin |
+| sarah@quickdesk.io | agent |
+| mike@quickdesk.io | agent |
+| john@example.com | customer |
+| jane@example.com | customer |
 
-| Email | Role | Description |
-|---|---|---|
-| admin@quickdesk.io | admin | Full access, user management |
-| sarah@quickdesk.io | agent | Support agent (online) |
-| mike@quickdesk.io | agent | Support agent (offline) |
-| john@example.com | customer | Has active conversation |
-| jane@example.com | customer | Has pending question |
-| *(guest)* | guest | Click "Continue as Guest" on login page |
+Guest access is available via "Continue as Guest" on the login page.
 
 ---
 
 ## Testing
 
 ```bash
-# Run all tests (44 tests across 4 suites)
 npm test
-
-# Run Socket.IO integration test (requires running server)
-npx ts-node tests/socket-test.ts
 ```
 
-**Test coverage:**
-- Auth: register, login, guest, refresh token, validation, duplicate handling
-- Rooms: create, list by role, get, assign, close, RBAC enforcement
-- Messages: pagination, cursor, chronological order, sender info
-- Admin: list users, change roles, RBAC
-- Socket.IO: real-time messaging, typing indicators, presence
-
----
-
-## API Examples
+44 tests across 4 suites covering auth, rooms, messages, admin RBAC, and security (no passwordHash leaks).
 
 ```bash
-# Create a guest session
-curl -X POST http://localhost:3001/api/auth/guest
-
-# Register a customer account
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username": "alice", "email": "alice@example.com", "password": "secret123"}'
-
-# Login
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "alice@example.com", "password": "secret123"}'
-# -> { "accessToken": "eyJ...", "refreshToken": "..." }
-
-# Refresh access token
-curl -X POST http://localhost:3001/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{"refreshToken": "..."}'
-
-# Create a support room
-curl -X POST http://localhost:3001/api/rooms \
-  -H "Authorization: Bearer eyJ..." \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Help with billing"}'
-
-# List rooms
-curl http://localhost:3001/api/rooms \
-  -H "Authorization: Bearer eyJ..."
-
-# Get message history (cursor-based pagination)
-curl "http://localhost:3001/api/rooms/{roomId}/messages?limit=50" \
-  -H "Authorization: Bearer eyJ..."
-# -> { "messages": [...], "hasMore": true, "nextCursor": "..." }
-
-# Load older messages
-curl "http://localhost:3001/api/rooms/{roomId}/messages?cursor=MSG_ID&limit=50&direction=before" \
-  -H "Authorization: Bearer eyJ..."
-
-# Assign agent to room (agent/admin only)
-curl -X PATCH http://localhost:3001/api/rooms/{roomId}/assign \
-  -H "Authorization: Bearer eyJ..."
-
-# Close room (agent/admin only)
-curl -X PATCH http://localhost:3001/api/rooms/{roomId}/close \
-  -H "Authorization: Bearer eyJ..."
+# Socket.IO integration test (requires running server)
+npx ts-node tests/socket-test.ts
 ```
 
 ---
@@ -477,32 +194,29 @@ curl -X PATCH http://localhost:3001/api/rooms/{roomId}/close \
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/quickdesk
 REDIS_URL=redis://localhost:6379
-JWT_SECRET=dev-secret-change-in-production
+JWT_SECRET=your-secret-min-32-characters-long
+JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
 JWT_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 PORT=3001
 NODE_ENV=development
+CORS_ORIGIN=*
 ```
 
 ---
 
-## Key Concepts Demonstrated
+## Design Decisions
 
-- **Socket.IO** — real-time bidirectional communication with automatic reconnection
-- **Redis Adapter** — Socket.IO Redis adapter for horizontal scaling across instances
-- **JWT Auth** — access + refresh token rotation, guest sessions
-- **RBAC** — role-based access control with 4 roles (guest, customer, agent, admin)
-- **Room Lifecycle** — waiting → active → closed with auto-assignment
-- **Presence System** — online user tracking per room
-- **Typing Indicators** — ephemeral state via Redis (no DB writes)
-- **Cursor-based Pagination** — efficient chat history loading without offset drift
-- **Zod Validation** — runtime validation on all inputs and environment variables
-- **pino Logging** — structured JSON logs, fastest Node.js logger
-- **Graceful Shutdown** — clean drain of connections on SIGTERM
-- **Monolith vs Microservices** — conscious architectural decision
-- **Docker Compose** — single command startup for PostgreSQL + Redis
-- **TypeScript Strict** — zero `any`, full type safety
+**Monolith** — Single service, single Dockerfile. The scope doesn't justify microservices.
 
----
+**Socket.IO over raw WebSockets** — Built-in reconnection, rooms, Redis adapter for multi-instance scaling, and automatic fallback to HTTP long-polling.
 
-*Built as a portfolio project to demonstrate real-time systems with Socket.IO, Redis pub/sub, and a React frontend.*
+**Separate pub/sub Redis clients** — Redis pub/sub requires dedicated connections for publishing and subscribing. The Socket.IO Redis adapter handles cross-instance message delivery through this.
+
+**Cursor-based pagination** — Offset-based pagination drifts when new messages arrive. Cursor pagination using `sent_at` + `id` keeps results stable.
+
+**JWT with refresh tokens** — Stateless auth that scales horizontally. Short-lived access tokens (15m) with longer refresh tokens (7d) for session continuity.
+
+**System messages persisted in DB** — Events like "Agent joined" and "Room closed" are stored as `type='system'` messages so conversation history is complete.
+
+**Graceful shutdown** — HTTP connections drain before disconnecting data stores, with a 10-second hard kill timeout to prevent hangs.

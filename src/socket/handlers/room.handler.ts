@@ -48,6 +48,10 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
   socket.on(Events.ROOM_LEAVE, async (roomId: string) => {
     try {
+      if (!socket.rooms.has(roomId)) {
+        return;
+      }
+
       socket.leave(roomId);
 
       io.to(roomId).emit(Events.USER_LEFT, {
